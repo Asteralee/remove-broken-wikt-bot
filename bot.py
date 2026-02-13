@@ -6,13 +6,13 @@ import os
 TEST_API = "https://test.wikipedia.org/w/api.php"
 SIMPLE_WIKT_API = "https://simple.wiktionary.org/w/api.php"
 
-USERNAME = os.getenv("BOT_USER")
-PASSWORD = os.getenv("BOT_PASS")
+USERNAME = os.getenv("WIKI_USER")
+PASSWORD = os.getenv("WIKI_PASS")
 
 CATEGORY_NAME = "Articles with broken Wiktionary links"
 LIMIT = 10
 
-if not USER or not PASS:
+if not USERNAME or not PASSWORD:
     raise Exception("Missing WIKI_USER or WIKI_PASS environment variables")
 
 session = requests.Session()
