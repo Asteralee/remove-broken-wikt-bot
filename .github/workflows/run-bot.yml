@@ -23,7 +23,7 @@ jobs:
 
       - name: Run bot
         env:
-          BOT_USER: ${{ secrets.BOT_USER }}
-          BOT_PASS: ${{ secrets.BOT_PASS }}
+          WIKI_USER: ${{ secrets.WIKI_USER }}
+          WIKI_PASS: ${{ secrets.WIKI_PASS }}
         run: |
           python bot.py
