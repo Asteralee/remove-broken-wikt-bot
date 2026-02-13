@@ -1,0 +1,1 @@
+# remove-broken-wikt-bot
