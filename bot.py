@@ -12,23 +12,46 @@ PASSWORD = os.getenv("WIKI_PASS")
 CATEGORY_NAME = "Articles with broken Wiktionary links"
 LIMIT = 10
 
+HEADERS = {"User-Agent": "BrokenWiktBot/1.0)"}
+
 if not USERNAME or not PASSWORD:
     raise Exception("Missing WIKI_USER or WIKI_PASS environment variables")
 
 session = requests.Session()
-simple_session = requests.Session()
+session.headers.update(HEADERS)
 
+simple_session = requests.Session()
+simple_session.headers.update(HEADERS)
+
+
+# ========================
+# Utility
+# ========================
+
+def safe_json(response):
+    if response.status_code != 200:
+        raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+    try:
+        return response.json()
+    except Exception:
+        raise Exception(f"Invalid JSON response:\n{response.text}")
+
+
+# ========================
 # Login
+# ========================
 
 def login():
-    # Get login token
     r1 = session.get(TEST_API, params={
         "action": "query",
         "meta": "tokens",
         "type": "login",
         "format": "json"
-    })
-    login_token = r1.json()["query"]["tokens"]["logintoken"]
+    }, timeout=30)
+
+    data = safe_json(r1)
+    login_token = data["query"]["tokens"]["logintoken"]
 
     r2 = session.post(TEST_API, data={
         "action": "login",
@@ -36,22 +59,30 @@ def login():
         "lgpassword": PASSWORD,
         "lgtoken": login_token,
         "format": "json"
-    })
+    }, timeout=30)
 
-    result = r2.json()
+    result = safe_json(r2)
 
     if result["login"]["result"] != "Success":
         raise Exception(f"Login failed: {result}")
 
     print("Logged in successfully.")
 
+
 def get_csrf_token():
     r = session.get(TEST_API, params={
         "action": "query",
         "meta": "tokens",
         "format": "json"
-    })
-    return r.json()["query"]["tokens"]["csrftoken"]
+    }, timeout=30)
+
+    data = safe_json(r)
+    return data["query"]["tokens"]["csrftoken"]
+
+
+# ========================
+# Page Retrieval
+# ========================
 
 def get_pages_from_category():
     r = session.get(TEST_API, params={
@@ -60,9 +91,10 @@ def get_pages_from_category():
         "cmtitle": f"Category:{CATEGORY_NAME}",
         "cmlimit": LIMIT,
         "format": "json"
-    })
+    }, timeout=30)
 
-    return [p["title"] for p in r.json()["query"]["categorymembers"]]
+    data = safe_json(r)
+    return [p["title"] for p in data["query"]["categorymembers"]]
 
 
 def get_page_text(title):
@@ -73,9 +105,11 @@ def get_page_text(title):
         "rvslots": "main",
         "titles": title,
         "format": "json"
-    })
+    }, timeout=30)
 
-    pages = r.json()["query"]["pages"]
+    data = safe_json(r)
+
+    pages = data["query"]["pages"]
     page_id = next(iter(pages))
     page = pages[page_id]
 
@@ -87,19 +121,25 @@ def get_page_text(title):
 
     return content, timestamp
 
+
 def page_exists_on_simple_wikt(title):
     r = simple_session.get(SIMPLE_WIKT_API, params={
         "action": "query",
         "titles": title,
         "format": "json"
-    })
+    }, timeout=30)
 
-    pages = r.json()["query"]["pages"]
+    data = safe_json(r)
+
+    pages = data["query"]["pages"]
     page_id = next(iter(pages))
 
     return page_id != "-1"
 
+
+# ========================
 # Editing
+# ========================
 
 def edit_page(title, new_text, summary, base_timestamp, csrf_token):
     r = session.post(TEST_API, data={
@@ -111,14 +151,17 @@ def edit_page(title, new_text, summary, base_timestamp, csrf_token):
         "basetimestamp": base_timestamp,
         "bot": True,
         "format": "json"
-    })
+    }, timeout=30)
 
-    print("Edit result:", r.json())
+    result = safe_json(r)
+    print("Edit result:", result)
+
 
 pattern = re.compile(
     r"\{\{broken wikt link\|([^|}]+)(?:\|([^}]+))?\}\}",
     re.IGNORECASE
 )
+
 
 def fix_text(text):
     changed = False
@@ -140,6 +183,7 @@ def fix_text(text):
 
     new_text = pattern.sub(replacer, text)
     return new_text, changed
+
 
 # ========================
 # MAIN
@@ -168,9 +212,10 @@ def main():
                 timestamp,
                 csrf_token
             )
-            time.sleep(2)
+            time.sleep(2)  # polite delay
         else:
             print("No changes needed.")
+
 
 if __name__ == "__main__":
     main()
