@@ -12,8 +12,8 @@ PASSWORD = os.getenv("BOT_PASS")
 CATEGORY_NAME = "Articles with broken Wiktionary links"
 LIMIT = 10
 
-if not USERNAME or not PASSWORD:
-    raise Exception("Missing BOT_USERNAME or BOT_PASSWORD environment variables")
+if not USER or not PASS:
+    raise Exception("Missing WIKI_USER or WIKI_PASS environment variables")
 
 session = requests.Session()
 simple_session = requests.Session()
